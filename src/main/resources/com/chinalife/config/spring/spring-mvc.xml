@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:p="http://www.springframework.org/schema/p"
+	xmlns:aop="http://www.springframework.org/schema/aop" xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:jee="http://www.springframework.org/schema/jee" xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:util="http://www.springframework.org/schema/util" xmlns:mvc="http://www.springframework.org/schema/mvc"
+	xmlns:task="http://www.springframework.org/schema/task"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.3.xsd
+	        http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.3.xsd  
+            http://www.springframework.org/schema/jee http://www.springframework.org/schema/jee/spring-jee-4.3.xsd  
+            http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.3.xsd
+            http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc-4.3.xsd 
+            http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.3.xsd  
+            http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util-4.3.xsd
+            http://www.springframework.org/schema/task http://www.springframework.org/schema/task/spring-task-4.3.xsd ">
+
+	<!-- 开启spirng aop -->
+ 	<aop:aspectj-autoproxy/>  
+	<context:component-scan base-package="com.chinalife" annotation-config="true" />
+
+	<bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource">
+		<property name="driverClassName" value="oracle.jdbc.OracleDriver" />
+		<property name="url">
+			<bean
+				class="org.springframework.beans.factory.config.MethodInvokingFactoryBean">
+				<property name="targetClass" value="com.chinalife.util.PropertyUtil" />
+				<property name="targetMethod" value="getDecValue" />
+				<property name="arguments" value="jdbc.url" />
+			</bean>
+		</property>
+		<property name="username">
+			<bean
+				class="org.springframework.beans.factory.config.MethodInvokingFactoryBean">
+				<property name="targetClass" value="com.chinalife.util.PropertyUtil" />
+				<property name="targetMethod" value="getDecValue" />
+				<property name="arguments" value="jdbc.username" />
+			</bean>
+		</property>
+		<property name="password">
+			<bean
+				class="org.springframework.beans.factory.config.MethodInvokingFactoryBean">
+				<property name="targetClass" value="com.chinalife.util.PropertyUtil" />
+				<property name="targetMethod" value="getDecValue" />
+				<property name="arguments" value="jdbc.password" />
+			</bean>
+		</property>
+		<property name="maxActive" value="200" />
+		<property name="maxIdle" value="20" />
+		<property name="initialSize" value="100" />
+		<property name="removeAbandoned" value="true" />
+		<property name="removeAbandonedTimeout" value="10" />
+		<property name="timeBetweenEvictionRunsMillis" value="10000" />
+		<property name="numTestsPerEvictionRun" value="10" />
+		<property name="minEvictableIdleTimeMillis" value="10000" />
+		<property name="validationQuery" value="SELECT 1 FROM DUAL" />
+	</bean>
+
+		
+	<bean id="jdbcTemplate" class="org.springframework.jdbc.core.JdbcTemplate">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+
+	<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+		<property name="dataSource" ref="dataSource" />
+		<!-- 自动扫描mapping.xml文件 -->
+		<property name="mapperLocations"
+			value="classpath:com/chinalife/config/mybatis/**/*.xml"></property>
+	</bean>
+
+	<!-- mapper接口所在包名，Spring会自动查找其下的类 -->
+	<bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+		<property name="basePackage"
+			value="com.chinalife.lottery.dao;com.chinalife.mapper;com.chinalife.mobile.mapper;com.chinalife.sesb.server.mapper" />
+		<property name="sqlSessionFactoryBeanName" value="sqlSessionFactory"></property>
+	</bean>
+
+	<bean id="txManager" name="txManager"
+		class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+
+	<tx:advice id="txAdvice" transaction-manager="txManager">
+		<tx:attributes>
+			<tx:method name="find*" propagation="SUPPORTS" />
+			<tx:method name="update*" propagation="REQUIRED"
+				rollback-for="Exception" />
+			<tx:method name="save*" propagation="REQUIRES_NEW"
+				rollback-for="Exception" />
+			<tx:method name="create*" propagation="REQUIRES_NEW"
+				rollback-for="Exception" />
+			<tx:method name="add*" propagation="REQUIRES_NEW"
+				rollback-for="Exception" />
+			<tx:method name="insert*" propagation="REQUIRED"
+				rollback-for="Exception" />
+			<tx:method name="delete*" propagation="REQUIRED"
+				rollback-for="Exception" />
+			<tx:method name="drop*" propagation="REQUIRED"
+				rollback-for="Exception" />
+			<tx:method name="*" propagation="NOT_SUPPORTED"/>
+		</tx:attributes>
+	</tx:advice>
+
+	<aop:config>
+		<aop:pointcut expression="execution(* com.chinalife.service..*.* (..)) or execution(* com.chinalife.lottery.service..*.* (..))"
+			id="services" />
+		<aop:advisor advice-ref="txAdvice" pointcut-ref="services" />
+	</aop:config>
+
+	<!-- 支持上传文件 -->
+	<bean id="multipartResolver"
+		class="org.springframework.web.multipart.commons.CommonsMultipartResolver">
+		<property name="maxUploadSize">
+			<value>524288000</value>
+		</property>
+	</bean>
+
+	<context:annotation-config />
+
+</beans>
